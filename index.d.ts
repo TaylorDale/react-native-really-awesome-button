@@ -42,10 +42,12 @@ declare module "react-native-really-awesome-button" {
     textFamily?: string;
     width?: number;
     onPress?: (afterPressFn?: AfterPressFn) => void;
+    onLongPress?: (afterPressFn?: AfterPressFn) => void;
+    longPressTime?: number;
   }
 
   export default class AwesomeButton extends Component<
     AwesomeButtonProps,
     {}
-  > {}
+    > { }
 }

@@ -5,7 +5,7 @@ import {
   TouchableWithoutFeedback,
   View,
   Animated,
-  ViewPropTypes
+  ViewPropTypes,
 } from "react-native";
 import { animateTiming, animateElastic, animateSpring } from "./helpers";
 import { styles, getStyles } from "./styles";
@@ -27,7 +27,7 @@ import {
   DEFAULT_TEXT_COLOR,
   DEFAULT_TEXT_SIZE,
   DEFAULT_WIDTH,
-  DEFAULT_RELEASE_DELAY
+  DEFAULT_RELEASE_DELAY,
 } from "./constants";
 
 export default class Button extends React.Component {
@@ -64,7 +64,9 @@ export default class Button extends React.Component {
     textLineHeight: PropTypes.number,
     textSize: PropTypes.number,
     textFamily: PropTypes.string,
-    width: PropTypes.number
+    width: PropTypes.number,
+    onLongPress: PropTypes.func,
+    longPressTime: PropTypes.number,
   };
 
   static defaultProps = {
@@ -89,6 +91,8 @@ export default class Button extends React.Component {
     height: DEFAULT_HEIGHT,
     paddingHorizontal: DEFAULT_HORIZONTAL_PADDING,
     onPress: null,
+    onLongPress: null,
+    longPressTime: 2000,
     progress: false,
     paddingBottom: 0,
     paddingTop: 0,
@@ -101,7 +105,7 @@ export default class Button extends React.Component {
     textLineHeight: DEFAULT_LINE_HEIGHT,
     textSize: DEFAULT_TEXT_SIZE,
     textFontFamily: null,
-    width: DEFAULT_WIDTH
+    width: DEFAULT_WIDTH,
   };
 
   constructor(props) {
@@ -124,8 +128,10 @@ export default class Button extends React.Component {
 
     this.state = {
       activity: false,
-      width: null
+      width: null,
     };
+
+    this.pressInTime = new Date();
   }
 
   getAnimatedValues() {
@@ -133,38 +139,38 @@ export default class Button extends React.Component {
 
     return {
       animatedContainer: {
-        opacity: this.animatedOpacity
+        opacity: this.animatedOpacity,
       },
       animatedShadow: {
         transform: [
           {
             translateY: this.animatedValue.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -this.props.raiseLevel / 2]
-            })
-          }
-        ]
+              outputRange: [0, -this.props.raiseLevel / 2],
+            }),
+          },
+        ],
       },
       animatedContent: {
         transform: [
           {
             translateY: this.animatedValue.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, this.props.raiseLevel]
-            })
-          }
-        ]
+              outputRange: [0, this.props.raiseLevel],
+            }),
+          },
+        ],
       },
       animatedActive: {
-        opacity: this.animatedActive
+        opacity: this.animatedActive,
       },
       animatedActivity: {
         opacity: this.activityOpacity,
         transform: [
           {
-            scale: this.activityOpacity
-          }
-        ]
+            scale: this.activityOpacity,
+          },
+        ],
       },
       animatedProgress: {
         opacity: this.loadingOpacity,
@@ -172,15 +178,16 @@ export default class Button extends React.Component {
           {
             translateX: this.animatedLoading.interpolate({
               inputRange: [0, 1],
-              outputRange: [width, 0]
-            })
-          }
-        ]
-      }
+              outputRange: [width, 0],
+            }),
+          },
+        ],
+      },
     };
   }
 
   pressIn = () => {
+    this.pressInTime = new Date();
     if (
       this.props.disabled === true ||
       !this.props.children ||
@@ -195,12 +202,12 @@ export default class Button extends React.Component {
     animateTiming({
       variable: this.animatedValue,
       toValue: 1,
-      duration: ANIMATED_TIMING_OFF
+      duration: ANIMATED_TIMING_OFF,
     });
     animateTiming({
       variable: this.animatedActive,
       toValue: 1,
-      duration: ANIMATED_TIMING_OFF
+      duration: ANIMATED_TIMING_OFF,
     });
     animateTiming({
       variable: this.animatedOpacity,
@@ -208,11 +215,11 @@ export default class Button extends React.Component {
       duration: ANIMATED_TIMING_OFF,
       callback: () => {
         this.pressing = false;
-      }
+      },
     });
   };
 
-  pressOut = event => {
+  pressOut = (event) => {
     if (
       this.props.disabled === true ||
       !this.props.children ||
@@ -245,31 +252,38 @@ export default class Button extends React.Component {
       // this.animating = true;
       this.setState(
         {
-          activity: true
+          activity: true,
         },
         () => {
           this.animateLoadingStart();
           animateTiming({
             variable: this.loadingOpacity,
-            toValue: 1
+            toValue: 1,
           });
           animateElastic({
             variable: this.textOpacity,
-            toValue: 0
+            toValue: 0,
           });
           animateElastic({
             variable: this.activityOpacity,
-            toValue: 1
+            toValue: 1,
           });
         }
       );
     }
-    if (this.props.onPress) {
-      this.props.onPress(this.end);
+    if (this.props.onPress || this.props.onLongPress) {
+      const isLongPress =
+        (new Date()).getTime() - this.pressInTime.getTime() >= this.props.longPressTime;
+      // determine if it was a long press, if provided
+      if (this.props.onLongPress && isLongPress) {
+        this.props.onLongPress(this.end);
+      } else {
+        this.props.onPress(this.end);
+      }
     }
   };
 
-  end = callback => {
+  end = (callback) => {
     if (this.props.progress !== true) {
       return;
     }
@@ -283,14 +297,14 @@ export default class Button extends React.Component {
         callback: () => {
           animateElastic({
             variable: this.textOpacity,
-            toValue: 1
+            toValue: 1,
           });
           animateElastic({
             variable: this.activityOpacity,
             toValue: 0,
             callback: () => {
               callback && callback();
-            }
+            },
           });
           animateTiming({
             variable: this.loadingOpacity,
@@ -301,9 +315,9 @@ export default class Button extends React.Component {
                 this.animating = false;
                 this.progressing = false;
               });
-            }
+            },
           });
-        }
+        },
       });
     }, 50);
   };
@@ -312,35 +326,35 @@ export default class Button extends React.Component {
     if (this.props.springRelease === true) {
       animateSpring({
         variable: this.animatedActive,
-        toValue: 0
+        toValue: 0,
       });
       animateSpring({
         variable: this.animatedValue,
         toValue: 0,
-        callback
+        callback,
       });
       animateTiming({
         variable: this.animatedOpacity,
         toValue: 1,
-        duration: ANIMATED_TIMING_OFF
+        duration: ANIMATED_TIMING_OFF,
       });
       return;
     }
     animateTiming({
       variable: this.animatedActive,
       toValue: 0,
-      duration: ANIMATED_TIMING_OFF
+      duration: ANIMATED_TIMING_OFF,
     });
     animateTiming({
       variable: this.animatedOpacity,
       toValue: 1,
-      duration: ANIMATED_TIMING_OFF
+      duration: ANIMATED_TIMING_OFF,
     });
     animateTiming({
       variable: this.animatedValue,
       toValue: 0,
       duration: ANIMATED_TIMING_OFF,
-      callback
+      callback,
     });
   }
 
@@ -349,11 +363,11 @@ export default class Button extends React.Component {
     animateTiming({
       variable: this.animatedLoading,
       toValue: 1,
-      duration: this.props.progressLoadingTime
+      duration: this.props.progressLoadingTime,
     });
   }
 
-  textLayout = event => {
+  textLayout = (event) => {
     this.containerWidth = event.nativeEvent.layout.width;
     if (this.props.width === null && !this.props.stretch == true) {
       if (
@@ -361,7 +375,7 @@ export default class Button extends React.Component {
         this.state.width < event.nativeEvent.layout.width
       ) {
         this.setState({
-          width: event.nativeEvent.layout.width
+          width: event.nativeEvent.layout.width,
         });
       }
       this.animatedOpacity.setValue(1);
@@ -374,9 +388,9 @@ export default class Button extends React.Component {
       opacity: this.textOpacity,
       transform: [
         {
-          scale: this.textOpacity
-        }
-      ]
+          scale: this.textOpacity,
+        },
+      ],
     };
 
     if (!children) {
@@ -386,7 +400,7 @@ export default class Button extends React.Component {
           style={[
             styles.container__placeholder,
             dynamicStyles.container__placeholder,
-            animatedStyles
+            animatedStyles,
           ]}
         />
       );
@@ -398,7 +412,7 @@ export default class Button extends React.Component {
           style={[
             styles.container__text,
             dynamicStyles.container__text,
-            animatedStyles
+            animatedStyles,
           ]}
         >
           {children}
@@ -410,7 +424,7 @@ export default class Button extends React.Component {
         style={[
           styles.container__view,
           dynamicStyles.container__view,
-          animatedStyles
+          animatedStyles,
         ]}
       >
         {children}
@@ -422,7 +436,7 @@ export default class Button extends React.Component {
     const animatedValues = this.getAnimatedValues();
     const dynamicStyles = getStyles({
       ...this.props,
-      stateWidth: this.state.width
+      stateWidth: this.state.width,
     });
     const { ExtraContent, style, activityColor } = this.props;
 
@@ -438,7 +452,7 @@ export default class Button extends React.Component {
             styles.container,
             dynamicStyles.container,
             animatedValues.animatedContainer,
-            style
+            style,
           ]}
         >
           <Animated.View
@@ -446,7 +460,7 @@ export default class Button extends React.Component {
             style={[
               styles.shadow,
               dynamicStyles.shadow,
-              animatedValues.animatedShadow
+              animatedValues.animatedShadow,
             ]}
           />
           <View
@@ -458,7 +472,7 @@ export default class Button extends React.Component {
             style={[
               styles.content,
               dynamicStyles.content,
-              animatedValues.animatedContent
+              animatedValues.animatedContent,
             ]}
           >
             <View
@@ -472,7 +486,7 @@ export default class Button extends React.Component {
                 style={[
                   styles.activeBackground,
                   dynamicStyles.activeBackground,
-                  animatedValues.animatedActive
+                  animatedValues.animatedActive,
                 ]}
               />
               {this.state.activity === true && (
@@ -482,14 +496,14 @@ export default class Button extends React.Component {
                     style={[
                       styles.progress,
                       dynamicStyles.progress,
-                      animatedValues.animatedProgress
+                      animatedValues.animatedProgress,
                     ]}
                   />
                   <Animated.View
                     testID="aws-btn-activity-indicator"
                     style={[
                       styles.container__activity,
-                      animatedValues.animatedActivity
+                      animatedValues.animatedActivity,
                     ]}
                   >
                     <ActivityIndicator color={activityColor} />
